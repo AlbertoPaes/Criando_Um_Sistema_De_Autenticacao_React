@@ -1,6 +1,8 @@
 import React, { createContext, useEffect, useState } from "react";
 import { useNavigate } from 'react-router';
 
+import { api, createSession } from '../services/api';
+
 /*No momento que eu faço o que está abaixo ele cria o contexto. O contexto é como
 se fosse uma área reservada do sistema, uma memória central que ele vai deixar disponível para gravar certas informações. São informações que a conotação delas indicam que elas precisam ser globais. 
 
@@ -31,39 +33,46 @@ export const AuthProvider = ( {children} ) => {
 
   useEffect( () => {
     const recoveredUser = localStorage.getItem('user');
+    const token = localStorage.getItem("token")
 
-    if(recoveredUser){
+    if(recoveredUser && token){
       setUser(JSON.parse(recoveredUser));
+      api.defaults.headers.Authorization = `Bearer ${token}`;
     }
 
     setLoading(false);
   }, [])
   
   /*Essa é a função que vai receber do login essas duas informações abaixo como parâmetro */
-  const login = (email,password) => {
-    console.log( "login auth", { email, password });
+  const login = async (email,password) => {
+    const response = await createSession(email,password)
+    
+    console.log("login", response.data);
 
     //Uma vez tendo a informação de email e password eu deveria ir numa API e criar uma section. Depois essa API vai retornar um usuário que terá o nosso id e o nosso email. Por enquanto vamos simular isso depois colocar a API.
 
     /* Isso seria a resposta da minha section */
-    const loggedUser = {
-      id: '123',
-      email
-    }
+    const loggedUser = response.data.user; // É como está na API dele.
+    const token = response.data.token;
 
     localStorage.setItem("user", JSON.stringify(loggedUser));
+    localStorage.setItem("token", token);
 
+    api.defaults.headers.Authorization = `Bearer ${token}`;
 
-    if(password==="secret"){
-      setUser(loggedUser);
-      navigate("/");
-    }
+    setUser(loggedUser);
+    navigate("/");
+    
   }
 
   const logout = () => {
     console.log("logout"); 
-    setUser(null);
+
     localStorage.remove("user");
+    localStorage.remove("token");      
+    api.defaults.headers.Authorization = null;
+
+    setUser(null);
     navigate("/login");
   }
 
